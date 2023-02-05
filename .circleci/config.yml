@@ -1,5 +1,24 @@
 version: 2.1
 
+orbs: 
+  slack: circleci/slack@4.10.1
+  aws-cli: circleci/aws-cli@3.1.1
+
+commands:
+  install_awscli:
+    description: Install AWS CLI # https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html
+    steps:
+      - run:
+          name: Install tar and zip utilities
+          command: |
+            yum -y install tar gzip unzip zip python-dev
+      - run:
+          name: Install AWS CLI 
+          command: |
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+            unzip awscliv2.zip
+            ./aws/install -i /usr/local/aws-cli -b /usr/local/bin
+
 jobs:
   build-frontend:
     docker:
@@ -111,6 +130,51 @@ jobs:
             npm audit fix --audit-level=critical --force
             npm audit --audit-level=critical
 
+  deploy-infrastructure:
+    docker:
+      # Docker image here that supports AWS CLI
+      - image: amazon/aws-cli
+    steps:
+      # Checkout code from git
+      - checkout
+      # - run: 
+      #     name: set/override default region 
+      #     command: | 
+      #         aws configure set default.region "us-west-2"
+      #         echo $(aws configure list)
+      - run:
+          name: Install tar and zip utilities
+          command: |
+            yum -y install tar gzip
+      - run:
+          name: Ensure back-end infrastructure exists
+          command: |
+            aws --region us-west-2 cloudformation deploy \
+              --template-file .circleci/files/backend.yml \
+              --tags project=udapeople \
+              --stack-name "udapeople-backend-${CIRCLE_WORKFLOW_ID:0:7}" \
+              --parameter-overrides ID="${CIRCLE_WORKFLOW_ID:0:7}"
+      - run:
+          name: Ensure front-end infrastructure exist
+          command: |
+            aws --region us-west-2 cloudformation deploy \
+              --template-file .circleci/files/frontend.yml \
+              --tags project=udapeople \
+              --stack-name "udapeople-frontend-${CIRCLE_WORKFLOW_ID:0:7}" \
+              --parameter-overrides ID="${CIRCLE_WORKFLOW_ID:0:7}"  
+      - run:
+          name: Add back-end ip to ansible inventory
+          command: |
+            BACKEND_PUBLIC_IP=$(aws --region us-west-2 ec2 describe-instances --filters "Name=tag:Name,Values=backend-${CIRCLE_WORKFLOW_ID:0:7}" --query 'Reservations[*].Instances[*].PublicDnsName' --output text)
+            echo $BACKEND_PUBLIC_IP >> .circleci/ansible/inventory.txt
+            cat .circleci/ansible/inventory.txt
+      - persist_to_workspace:
+          root: ~/
+          paths:
+            - project/.circleci/ansible/inventory.txt
+      # Here's where you will add some code to rollback on failure 
+      - destroy-environment 
+
 workflows:
   default:
     jobs:
@@ -124,3 +188,8 @@ workflows:
           requires: [build-backend]
       - scan-frontend:
           requires: [build-frontend]
+
+
+# udapeople_user
+# Access key - AKIA2HI7HISY7OJNVJ55
+# Secret Acess key - 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
