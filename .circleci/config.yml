@@ -5,6 +5,22 @@ orbs:
   aws-cli: circleci/aws-cli@3.1.1
 
 commands:
+  destroy-environment:
+      description: Destroy back-end and front-end cloudformation stacks given a workflow ID.
+      parameters:
+        Workflow_ID:
+          type: string
+          default: ${CIRCLE_WORKFLOW_ID:0:7}
+      steps:
+        - run:
+            name: Destroy environments
+            when: on_fail
+            command: |
+              echo "Destroying environment: << parameters.Workflow_ID >> "
+              aws --region us-west-2 s3 rm s3://udapeople-<<parameters.Workflow_ID>> --recursive
+              aws --region us-west-2 cloudformation delete-stack --stack-name udapeople-backend-<< parameters.Workflow_ID >>
+              aws --region us-west-2 cloudformation delete-stack --stack-name udapeople-frontend-<< parameters.Workflow_ID >>
+              
   install_awscli:
     description: Install AWS CLI # https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html
     steps:
@@ -188,7 +204,11 @@ workflows:
           requires: [build-backend]
       - scan-frontend:
           requires: [build-frontend]
-
+      - deploy-infrastructure:
+          requires: [test-frontend, test-backend, scan-frontend, scan-backend]
+          filters:
+            branches:
+              only: [main]
 
 # udapeople_user
 # Access key - AKIA2HI7HISY7OJNVJ55
