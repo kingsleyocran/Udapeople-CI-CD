@@ -1,26 +1,25 @@
 version: 2.1
 
-orbs: 
+orbs:
   slack: circleci/slack@4.10.1
   aws-cli: circleci/aws-cli@3.1.1
 
 commands:
   destroy-environment:
-      description: Destroy back-end and front-end cloudformation stacks given a workflow ID.
-      parameters:
-        Workflow_ID:
-          type: string
-          default: ${CIRCLE_WORKFLOW_ID:0:7}
-      steps:
-        - run:
-            name: Destroy environments
-            when: on_fail
-            command: |
-              echo "Destroying environment: << parameters.Workflow_ID >> "
-              aws --region us-west-2 s3 rm s3://udapeople-<<parameters.Workflow_ID>> --recursive
-              aws --region us-west-2 cloudformation delete-stack --stack-name udapeople-backend-<< parameters.Workflow_ID >>
-              aws --region us-west-2 cloudformation delete-stack --stack-name udapeople-frontend-<< parameters.Workflow_ID >>
-              
+    parameters:
+      workflow_id:
+        type: string
+    steps:
+      - run:
+          name: Destroying environment
+          when: on_fail
+          command: |
+            aws cloudformation delete-stack \
+              --stack-name "udapeople-frontend-<< parameters.workflow_id >>"
+            aws cloudformation delete-stack \
+              --stack-name "udapeople-backend-<< parameters.workflow_id >>"
+            aws s3 rm "s3://udapeople-<< parameters.workflow_id >>" --recursive
+
   install_awscli:
     description: Install AWS CLI # https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html
     steps:
@@ -29,7 +28,7 @@ commands:
           command: |
             yum -y install tar gzip unzip zip python-dev
       - run:
-          name: Install AWS CLI 
+          name: Install AWS CLI
           command: |
             curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
             unzip awscliv2.zip
@@ -151,45 +150,38 @@ jobs:
       # Docker image here that supports AWS CLI
       - image: amazon/aws-cli
     steps:
-      # Checkout code from git
       - checkout
-      # - run: 
-      #     name: set/override default region 
-      #     command: | 
-      #         aws configure set default.region "us-west-2"
-      #         echo $(aws configure list)
-      - run:
-          name: Install tar and zip utilities
-          command: |
-            yum -y install tar gzip
+      - dependencies
+      # Checkout code from git
       - run:
           name: Ensure back-end infrastructure exists
           command: |
-            aws --region us-west-2 cloudformation deploy \
-              --template-file .circleci/files/backend.yml \
-              --tags project=udapeople \
-              --stack-name "udapeople-backend-${CIRCLE_WORKFLOW_ID:0:7}" \
-              --parameter-overrides ID="${CIRCLE_WORKFLOW_ID:0:7}"
+            aws cloudformation deploy \
+            --template-file .circleci/files/backend.yml \
+            --stack-name udapeople-backend-${CIRCLE_WORKFLOW_ID:0:7} \
+            --parameter-overrides ID=${CIRCLE_WORKFLOW_ID:0:7} \
+            --tags project=udapeople-backend-${CIRCLE_WORKFLOW_ID:0:7}
       - run:
           name: Ensure front-end infrastructure exist
           command: |
-            aws --region us-west-2 cloudformation deploy \
-              --template-file .circleci/files/frontend.yml \
-              --tags project=udapeople \
-              --stack-name "udapeople-frontend-${CIRCLE_WORKFLOW_ID:0:7}" \
-              --parameter-overrides ID="${CIRCLE_WORKFLOW_ID:0:7}"  
+            aws cloudformation deploy \
+            --template-file .circleci/files/frontend.yml \
+            --stack-name udapeople-frontend-${CIRCLE_WORKFLOW_ID:0:7} \
+            --parameter-overrides ID=${CIRCLE_WORKFLOW_ID:0:7} \
+            --tags project=udapeople-frontend-${CIRCLE_WORKFLOW_ID:0:7}
       - run:
           name: Add back-end ip to ansible inventory
           command: |
-            BACKEND_PUBLIC_IP=$(aws --region us-west-2 ec2 describe-instances --filters "Name=tag:Name,Values=backend-${CIRCLE_WORKFLOW_ID:0:7}" --query 'Reservations[*].Instances[*].PublicDnsName' --output text)
-            echo $BACKEND_PUBLIC_IP >> .circleci/ansible/inventory.txt
-            cat .circleci/ansible/inventory.txt
+            aws cloudformation describe-stacks \
+            --stack-name "udapeople-backend-${CIRCLE_WORKFLOW_ID:0:7}" \
+            --query "Stacks[0].Outputs[0].OutputValue" \
+            --output text >> .circleci/ansible/inventory.txt
       - persist_to_workspace:
           root: ~/
           paths:
             - project/.circleci/ansible/inventory.txt
-      # Here's where you will add some code to rollback on failure 
-      - destroy-environment 
+      - destroy-environment:
+          workflow_id: "${CIRCLE_WORKFLOW_ID:0:7}"
 
 workflows:
   default:
@@ -209,7 +201,3 @@ workflows:
           filters:
             branches:
               only: [main]
-
-# udapeople_user
-# Access key - AKIA2HI7HISY7OJNVJ55
-# Secret Acess key - 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
