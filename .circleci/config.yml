@@ -14,6 +14,7 @@ commands:
             curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
             unzip awscliv2.zip
             sudo ./aws/install
+
   install_ansible:
     description: Install Ansible
     steps:
@@ -24,6 +25,7 @@ commands:
             sudo apt install software-properties-common -y
             sudo add-apt-repository --yes --update ppa:ansible/ansible
             sudo apt install ansible -y
+
   install_nodejs:
     description: Install Node.js 13
     steps:
@@ -32,6 +34,7 @@ commands:
           command: |
             curl -fsSL https://deb.nodesource.com/setup_13.x | sudo -E bash -
             sudo apt install -y nodejs
+
   destroy-environment:
     description: Destroy back-end and front-end cloudformation stacks given a workflow ID.
     parameters:
@@ -46,6 +49,7 @@ commands:
             aws cloudformation delete-stack --stack-name udapeople-backend-<< parameters.Workflow_ID >>
             aws s3 rm s3://udapeople-<<parameters.Workflow_ID>> --recursive
             aws cloudformation delete-stack --stack-name udapeople-frontend-<< parameters.Workflow_ID >>
+
   revert-migrations:
     description: Revert the last migration
     parameters:
@@ -65,6 +69,7 @@ commands:
               npm install
               npm run migration:revert
             fi
+
 jobs:
   build-frontend:
     docker:
@@ -82,6 +87,7 @@ jobs:
       - save_cache:
           paths: [frontend/node_modules]
           key: frontend-deps
+
   build-backend:
     docker:
       - image: cimg/node:13.8.0
@@ -98,6 +104,7 @@ jobs:
       - save_cache:
           paths: [backend/node_modules]
           key: backend-deps
+
   test-frontend:
     docker:
       - image: cimg/node:13.8.0
@@ -111,6 +118,7 @@ jobs:
             cd frontend
             npm install
             npm test
+
   test-backend:
     docker:
       - image: cimg/node:13.8.0
@@ -124,6 +132,7 @@ jobs:
             cd backend
             npm install
             npm test
+
   scan-frontend:
     docker:
       - image: cimg/node:13.8.0
@@ -138,6 +147,7 @@ jobs:
             npm install
             npm audit fix --force --audit-level=critical
             npm audit --audit-level=critical
+            
   scan-backend:
     docker:
       - image: cimg/node:13.8.0
@@ -153,6 +163,7 @@ jobs:
             npm audit fix --force --audit-level=critical
             npm audit fix --force --audit-level=critical
             npm audit --audit-level=critical
+
   deploy-infrastructure:
     docker:
       - image: cimg/base:stable
@@ -191,59 +202,13 @@ jobs:
 
       - destroy-environment
 
-
-  # configure-infrastructure:
-  #   docker:
-  #     # Docker image here that supports Ansible
-  #     - image: python:3.7-alpine3.11
-
-  #   steps:
-  #     # Checkout code from git
-  #     - checkout
-  #     # Add ssh keys with fingerprint
-  #     - add_ssh_keys:
-  #         fingerprints: ["3e:86:e8:61:31:41:ea:5e:16:1f:4a:9b:18:21:83:c2"]
-  #     # attach workspace
-  #     - attach_workspace:
-  #         at: ~/
-
-  #     - run:
-  #         name: Install dependencies
-  #         command: |
-  #           apk add --update tar gzip ansible
-  #           pip install awscli
-
-  #     - run:
-  #         name: Configure server
-  #         command: |
-  #           cat ./.circleci/ansible/inventory.txt
-  #           export ANSIBLE_HOST_KEY_CHECKING=False
-  #           export RECORD_HOST_KEYS=False
-  #           export ANSIBLE_PARAMIKO_BANNER_TIMEOUT=30
-  #           echo ENVIROMENT=production > "backend/.env"
-  #           echo TYPEORM_CONNECTION=postgres >> "backend/.env"
-  #           echo TYPEORM_MIGRATIONS_DIR=./src/migrations >> "backend/.env"
-  #           echo TYPEORM_MIGRATIONS=./src/migrations >> "backend/.env"
-  #           echo TYPEORM_ENTITIES=./src/modules/domain/**/*.entity.ts >> "backend/.env"
-  #           echo TYPEORM_PORT=$TYPEORM_PORT >> "backend/.env"
-  #           echo TYPEORM_USERNAME=$TYPEORM_USERNAME >> "backend/.env"
-  #           echo TYPEORM_HOST=$TYPEORM_HOST >> "backend/.env"
-  #           echo TYPEORM_PASSWORD=$TYPEORM_PASSWORD >> "backend/.env"
-  #           echo TYPEORM_DATABASE=$TYPEORM_DATABASE >> "backend/.env"
-  #           echo VERSION=1 >> "backend/.env"
-  #           echo "CONTENT OF backend/.env"
-  #           cat backend/.env
-  #           cd .circleci/ansible
-  #           ansible-playbook -i inventory.txt configure-server.yml -v
-  #     - destroy-environment
-
   configure-infrastructure:
     docker:
-      - image: cimg/base:stable
+      - image: python:3.7-alpine3.11
     steps:
       - checkout
       - install_awscli
-      - install_ansible
+
       - add_ssh_keys:
           fingerprints: ["3e:86:e8:61:31:41:ea:5e:16:1f:4a:9b:18:21:83:c2"]
       - attach_workspace:
@@ -483,16 +448,16 @@ workflows:
     jobs:
       - build-frontend
       - build-backend
-      # - test-frontend:
-      #     requires: [build-frontend]
-      # - test-backend:
-      #     requires: [build-backend]
-      # - scan-backend:
-      #     requires: [build-backend]
-      # - scan-frontend:
-      #     requires: [build-frontend]
+      - test-frontend:
+          requires: [build-frontend]
+      - test-backend:
+          requires: [build-backend]
+      - scan-backend:
+          requires: [build-backend]
+      - scan-frontend:
+          requires: [build-frontend]
       - deploy-infrastructure:
-          #requires: [test-frontend, test-backend, scan-frontend, scan-backend]
+          requires: [test-frontend, test-backend, scan-frontend, scan-backend]
           filters:
             branches:
               only: [main]
