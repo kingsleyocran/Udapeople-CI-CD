@@ -42,7 +42,7 @@ commands:
           name: Revert migrations
           when: on_fail
           command: |
-            SUCCESS=$(curl --insecure  https://kvdb.io/${KVDB_BUCKET_ID}/migration_<< parameters.Workflow_ID >>)
+            SUCCESS=$(curl --insecure  https://kvdb.io/YQt24WYBtPqUmXsFzWteKD/migration_<< parameters.Workflow_ID >>)
             # Logic for reverting the database state
             if (( $SUCCESS == 1 ));
             then
@@ -259,6 +259,24 @@ jobs:
       - run:
           name: Run migrations
           command: |
+            cat ./.circleci/ansible/inventory.txt
+            export ANSIBLE_HOST_KEY_CHECKING=False
+            export RECORD_HOST_KEYS=False
+            export ANSIBLE_PARAMIKO_BANNER_TIMEOUT=30   
+            echo ENVIROMENT=production > "backend/.env"      
+            echo TYPEORM_CONNECTION=postgres >> "backend/.env"
+            echo TYPEORM_MIGRATIONS_DIR=./src/migrations >> "backend/.env"
+            echo TYPEORM_MIGRATIONS=./src/migrations >> "backend/.env"
+            echo TYPEORM_ENTITIES=./src/modules/domain/**/*.entity.ts >> "backend/.env"          
+            echo TYPEORM_PORT=$TYPEORM_PORT >> "backend/.env"      
+            echo TYPEORM_USERNAME=$TYPEORM_USERNAME >> "backend/.env"
+            echo TYPEORM_HOST=$TYPEORM_HOST >> "backend/.env"            
+            echo TYPEORM_PASSWORD=$TYPEORM_PASSWORD >> "backend/.env"      
+            echo TYPEORM_DATABASE=$TYPEORM_DATABASE >> "backend/.env" 
+            echo VERSION=1 >> "backend/.env"      
+            echo "CONTENT OF backend/.env"      
+            cat backend/.env
+
             cd backend
             npm install
             npm run migrations > migrations_dump.txt
@@ -267,7 +285,7 @@ jobs:
           command: |
             if grep -q "has been executed successfully." ~/project/backend/migrations_dump.txt
             then
-              curl https://kvdb.io/85orahciZMutcS9vhqFW3W/migration_${CIRCLE_WORKFLOW_ID:0:7}  -d '1'
+              curl https://kvdb.io/YQt24WYBtPqUmXsFzWteKD/migration_${CIRCLE_WORKFLOW_ID:0:7}  -d '1'
             fi
       - destroy-environment
       - revert-migrations
@@ -286,19 +304,6 @@ jobs:
             yum install -y tar gzip curl
             curl -sL https://rpm.nodesource.com/setup_10.x | bash -
             yum install -y nodejs
-      # - run:
-      #     name: Install node
-      #     command: |
-      #       curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.34.0/install.sh | bash
-      #       export NVM_DIR="$HOME/.nvm"
-      #       [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-      #       nvm install 16
-
-      # - run:
-      #     name: Install ansible and awscli
-      #     command: |
-      #       pip3 install ansible
-      #       pip3 install awscli
 
       - run:
           name: Get backend url
@@ -355,7 +360,6 @@ jobs:
             sudo apt install software-properties-common -y
             sudo add-apt-repository --yes --update ppa:ansible/ansible
             sudo apt install ansible -y
-      #              pip install --upgrade
       - run:
           name: Deploy backend
           command: |
@@ -380,11 +384,6 @@ jobs:
     docker:
       - image: cimg/node:13.8.0
     steps:
-      # - run:
-      #     name: Install dependencies
-      #     command: |
-      #       yum -y install jq tar gzip git curl
-      # - install_awscli
       - run:
           name: Install AWS CLI
           command: |
