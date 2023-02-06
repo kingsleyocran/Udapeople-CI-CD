@@ -2,7 +2,13 @@ Public Url to GitHub repository (not private) [URL01]
     https://github.com/kingsleyocran/Udapeople-CI-CD
 
 Public URL for your S3 Bucket (aka, your green candidate front-end) [URL02]
-    http://udapeople-683c244.s3-website-us-west-2.amazonaws.com/
+    http://udapeople-c177eb1.s3-website-us-east-1.amazonaws.com
 
 Evidence of deployed and functioning Frontend in CloudFront. [URL03]
-    http://d3eguuu959h6hc.cloudfront.net/#/employees
+    https://dgrwc7i6pc7yr.cloudfront.net/
+
+Backend Endpoint url [URL04]
+    ec2-54-157-135-67.compute-1.amazonaws.com
+
+Prometheus Server URL [URL05]
+    http://ec2-44-200-62-92.compute-1.amazonaws.com:9090/
