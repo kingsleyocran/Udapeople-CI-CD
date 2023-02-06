@@ -292,7 +292,7 @@ jobs:
 
   deploy-frontend:
     docker:
-      - image: circleci/node:13.8.0
+      - image: cimg/base:stable
     steps:
       - checkout
 
@@ -301,8 +301,11 @@ jobs:
             - "3e:86:e8:61:31:41:ea:5e:16:1f:4a:9b:18:21:83:c2"
       - attach_workspace:
           at: ~/
-      - install_awscli
+
+      - install_awscli  
+      - install_nodejs
       - install_ansible
+
       - run:
           name: Get backend url
           command: |
@@ -327,10 +330,10 @@ jobs:
             aws s3 cp dist s3://udapeople-${CIRCLE_WORKFLOW_ID:0:7} --recursive
       - destroy-environment
       - revert-migrations
-         
+                  
   deploy-backend:
     docker:
-      - image: circleci/node:13.8.0
+      - image: cimg/base:stable
     steps:
       # Add ssh keys with fingerprint
       # attach workspace
@@ -341,6 +344,7 @@ jobs:
       - attach_workspace:
           at: ~/
       - install_awscli
+      - install_nodejs
       - install_ansible
       - run:
           name: Deploy backend
