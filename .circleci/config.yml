@@ -381,11 +381,11 @@ jobs:
               echo $FRONTEND_WEBSITE
               if curl -s $FRONTEND_WEBSITE | grep "Welcome"
               then
-                exit 0
+                return 1
               else
-                exit 1
+                return 1
               fi
-              
+
       - run:
           name: Backend smoke test.
           command: |
