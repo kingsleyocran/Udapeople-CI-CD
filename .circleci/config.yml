@@ -20,32 +20,19 @@ commands:
             aws --region us-west-2 s3 rm s3://udapeople-<<parameters.Workflow_ID>> --recursive
             aws --region us-west-2 cloudformation delete-stack --stack-name udapeople-backend-<< parameters.Workflow_ID >>
             aws --region us-west-2 cloudformation delete-stack --stack-name udapeople-frontend-<< parameters.Workflow_ID >>
-  
+
   install_awscli:
-    description: Install AWS CLI # https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html
+    description: Install AWS CLI v2
     steps:
       - run:
-          name: Install tar and zip utilities
-          command: |
-            yum -y install tar gzip unzip zip python-dev
-      - run:
-          name: Install AWS CLI 
+          name: Install AWS CLI v2
           command: |
             curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
             unzip awscliv2.zip
-            ./aws/install -i /usr/local/aws-cli -b /usr/local/bin
-
-  install_nodejs:
-    description: Install Node.js 13
-    steps:
-      - run:
-          name: Install Node.js 13
-          command: |
-            curl -fsSL https://deb.nodesource.com/setup_13.x | sudo -E bash -
-            sudo apt install -y nodejs
+            sudo ./aws/install
 
   revert-migrations:
-    description: Revert the last migration
+    description: Revert the last migration if successfully run in the current workflow.
     parameters:
       Workflow_ID:
         type: string
@@ -55,7 +42,7 @@ commands:
           name: Revert migrations
           when: on_fail
           command: |
-            SUCCESS=$(curl --insecure  https://kvdb.io/85orahciZMutcS9vhqFW3W/migration_<< parameters.Workflow_ID >>)
+            SUCCESS=$(curl --insecure  https://kvdb.io/${KVDB_BUCKET_ID}/migration_<< parameters.Workflow_ID >>)
             # Logic for reverting the database state
             if (( $SUCCESS == 1 ));
             then
@@ -63,15 +50,14 @@ commands:
               npm install
               npm run migration:revert
             fi
-
 jobs:
   build-frontend:
     docker:
-      - image: cimg/node:13.8.0
+      - image: circleci/node:13.8.0
     steps:
       - checkout
       - restore_cache:
-          keys: [frontend-deps]
+          keys: [frontend-build]
       - run:
           name: Build front-end
           command: |
@@ -80,15 +66,15 @@ jobs:
             npm run build
       - save_cache:
           paths: [frontend/node_modules]
-          key: frontend-deps
+          key: frontend-build
 
   build-backend:
     docker:
-      - image: cimg/node:13.8.0
+      - image: circleci/node:13.8.0
     steps:
       - checkout
       - restore_cache:
-          keys: [backend-deps]
+          keys: [backend-build]
       - run:
           name: Back-end build
           command: |
@@ -97,66 +83,82 @@ jobs:
             npm run build
       - save_cache:
           paths: [backend/node_modules]
-          key: backend-deps
+          key: backend-build
 
   test-frontend:
     docker:
-      - image: cimg/node:13.8.0
+      # Docker image here
+      - image: circleci/node:13.8.0
     steps:
+      # Checkout code from git
       - checkout
+      # Restore from cache
       - restore_cache:
-          keys: [frontend-deps]
+          keys: [frontend-build]
+      # Your job code here
       - run:
-          name: Front-end Unit Test
+          name: Test front-end
           command: |
             cd frontend
-            npm install
-            npm test
+            npm i
+            npm run test
 
   test-backend:
     docker:
-      - image: cimg/node:13.8.0
+      # Docker image here
+      - image: circleci/node:13.8.0
     steps:
+      # Checkout code from git
       - checkout
+      # Restore from cache
       - restore_cache:
-          keys: [backend-deps]
+          keys: [backend-build]
+      # Your job code here
       - run:
-          name: Back-end Unit Test
+          name: Test back-end
           command: |
             cd backend
-            npm install
-            npm test
+            npm i
+            npm run test
 
   scan-frontend:
     docker:
-      - image: cimg/node:13.8.0
+      # Docker image here
+      - image: circleci/node:13.8.0
     steps:
+      # Checkout code from git
       - checkout
+      # Restore from cache
       - restore_cache:
-          keys: [frontend-deps]
+          keys: [frontend-build]
+      # Your job code here
       - run:
-          name: Front-end Scan
+          name: Scan front-end
           command: |
             cd frontend
             npm install
-            npm audit fix --force --audit-level=critical
-            npm audit fix --force --audit-level=critical
+            npm audit fix --audit-level=critical --force
+            npm audit fix --audit-level=critical --force
             npm audit --audit-level=critical
-            
+
   scan-backend:
     docker:
-      - image: cimg/node:13.8.0
+      # Docker image here
+      - image: circleci/node:13.8.0
     steps:
+      # Checkout code from git
       - checkout
+      # Restore from cache
       - restore_cache:
-          keys: [backend-deps]
+          keys: [backend-build]
+      # Your job code here
       - run:
-          name: Back-end Scan
+          name: Scan back-end
           command: |
             cd backend
             npm install
-            npm audit fix --force --audit-level=critical
-            npm audit fix --force --audit-level=critical
+            npm audit fix --audit-level=critical --force
+            npm audit fix --audit-level=critical --force
             npm audit --audit-level=critical
 
   deploy-infrastructure:
@@ -166,80 +168,87 @@ jobs:
     steps:
       # Checkout code from git
       - checkout
-      # - run: 
-      #     name: set/override default region 
-      #     command: | 
-      #         aws configure set default.region "us-west-2"
-      #         echo $(aws configure list)
       - run:
           name: Install tar and zip utilities
           command: |
             yum -y install tar gzip
       - run:
-          name: Ensure back-end infrastructure exists
-          command: |
-            aws --region us-west-2 cloudformation deploy \
-              --template-file .circleci/files/backend.yml \
-              --tags project=udapeople \
-              --stack-name "udapeople-backend-${CIRCLE_WORKFLOW_ID:0:7}" \
-              --parameter-overrides ID="${CIRCLE_WORKFLOW_ID:0:7}"
-      - run:
           name: Ensure front-end infrastructure exist
           command: |
-            aws --region us-west-2 cloudformation deploy \
-              --template-file .circleci/files/frontend.yml \
-              --tags project=udapeople \
-              --stack-name "udapeople-frontend-${CIRCLE_WORKFLOW_ID:0:7}" \
-              --parameter-overrides ID="${CIRCLE_WORKFLOW_ID:0:7}"  
+            aws cloudformation deploy \
+                --template-file .circleci/files/frontend.yml \
+                --stack-name "udapeople-frontend-${CIRCLE_WORKFLOW_ID:0:7}" \
+                --parameter-overrides ID="${CIRCLE_WORKFLOW_ID:0:7}"  \
+                --tags project=udapeople
+
+      - run:
+          name: Ensure back-end infrastructure exists
+          command: |
+            aws cloudformation deploy \
+                --template-file .circleci/files/backend.yml \
+                --stack-name "udapeople-backend-${CIRCLE_WORKFLOW_ID:0:7}" \
+                --parameter-overrides ID="${CIRCLE_WORKFLOW_ID:0:7}"  \
+                --tags project=udapeople
+
       - run:
           name: Add back-end ip to ansible inventory
           command: |
             BACKEND_PUBLIC_IP=$(aws --region us-west-2 ec2 describe-instances --filters "Name=tag:Name,Values=backend-${CIRCLE_WORKFLOW_ID:0:7}" --query 'Reservations[*].Instances[*].PublicDnsName' --output text)
             echo $BACKEND_PUBLIC_IP >> .circleci/ansible/inventory.txt
             cat .circleci/ansible/inventory.txt
+
       - persist_to_workspace:
           root: ~/
           paths:
             - project/.circleci/ansible/inventory.txt
-      # Here's where you will add some code to rollback on failure 
-      - destroy-environment 
+
+      - destroy-environment
 
   configure-infrastructure:
     docker:
+      # Docker image here that supports Ansible
       - image: python:3.7-alpine3.11
-    steps:
-      - checkout
-      - install_awscli
 
+    steps:
+      # Checkout code from git
+      - checkout
+      # Add ssh keys with fingerprint
       - add_ssh_keys:
           fingerprints: ["3e:86:e8:61:31:41:ea:5e:16:1f:4a:9b:18:21:83:c2"]
+      # attach workspace
       - attach_workspace:
           at: ~/
+
       - run:
-          name: Configure Server
+          name: Install dependencies
+          command: |
+            apk add --update tar gzip ansible
+            pip install awscli
+
+      - run:
+          name: Configure server
           command: |
             cat ./.circleci/ansible/inventory.txt
             export ANSIBLE_HOST_KEY_CHECKING=False
             export RECORD_HOST_KEYS=False
-            export ANSIBLE_PARAMIKO_BANNER_TIMEOUT=300
-            echo ENVIROMENT=production > "backend/.env"
+            export ANSIBLE_PARAMIKO_BANNER_TIMEOUT=30   
+            echo ENVIROMENT=production > "backend/.env"      
             echo TYPEORM_CONNECTION=postgres >> "backend/.env"
             echo TYPEORM_MIGRATIONS_DIR=./src/migrations >> "backend/.env"
             echo TYPEORM_MIGRATIONS=./src/migrations >> "backend/.env"
-            echo TYPEORM_ENTITIES=./src/modules/domain/**/*.entity.ts >> "backend/.env"
-            echo TYPEORM_PORT=$TYPEORM_PORT >> "backend/.env"
+            echo TYPEORM_ENTITIES=./src/modules/domain/**/*.entity.ts >> "backend/.env"          
+            echo TYPEORM_PORT=$TYPEORM_PORT >> "backend/.env"      
             echo TYPEORM_USERNAME=$TYPEORM_USERNAME >> "backend/.env"
-            echo TYPEORM_HOST=$TYPEORM_HOST >> "backend/.env"
-            echo TYPEORM_PASSWORD=$TYPEORM_PASSWORD >> "backend/.env"
-            echo TYPEORM_DATABASE=$TYPEORM_DATABASE >> "backend/.env"
-            echo VERSION=1 >> "backend/.env"
-            echo "CONTENT OF backend/.env"
-            cat backend/.env
-
+            echo TYPEORM_HOST=$TYPEORM_HOST >> "backend/.env"            
+            echo TYPEORM_PASSWORD=$TYPEORM_PASSWORD >> "backend/.env"      
+            echo TYPEORM_DATABASE=$TYPEORM_DATABASE >> "backend/.env" 
+            echo VERSION=1 >> "backend/.env"      
+            echo "CONTENT OF backend/.env"      
+            cat backend/.env         
             cd .circleci/ansible
-            cat inventory.txt
-            ansible-playbook -i inventory.txt configure-server.yml
+            ansible-playbook -i inventory.txt configure-server.yml -v
       - destroy-environment
+
 
   run-migrations:
     docker:
@@ -277,6 +286,19 @@ jobs:
             yum install -y tar gzip curl
             curl -sL https://rpm.nodesource.com/setup_10.x | bash -
             yum install -y nodejs
+      # - run:
+      #     name: Install node
+      #     command: |
+      #       curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.34.0/install.sh | bash
+      #       export NVM_DIR="$HOME/.nvm"
+      #       [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+      #       nvm install 16
+
+      # - run:
+      #     name: Install ansible and awscli
+      #     command: |
+      #       pip3 install ansible
+      #       pip3 install awscli
 
       - run:
           name: Get backend url
@@ -448,8 +470,8 @@ jobs:
 workflows:
   default:
     jobs:
-      # - build-frontend
-      # - build-backend
+      - build-frontend
+      - build-backend
       # - test-frontend:
       #     requires: [build-frontend]
       # - test-backend:
@@ -466,9 +488,9 @@ workflows:
       - configure-infrastructure:
           requires: [deploy-infrastructure]
       - run-migrations:
-          requires: [configure-infrastructure]
+           requires: [configure-infrastructure]
       - deploy-frontend:
-          requires: [run-migrations]
+           requires: [run-migrations]
       - deploy-backend:
           requires: [run-migrations]
       - smoke-test:
