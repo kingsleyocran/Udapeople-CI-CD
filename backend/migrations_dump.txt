@@ -10,4 +10,3 @@
 > glee2@1.0.0 migrations
 > ts-node -r dotenv/config node_modules/.bin/typeorm migration:run
 
-Error during migration run:
