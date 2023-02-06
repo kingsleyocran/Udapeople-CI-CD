@@ -1,8 +1,8 @@
 version: 2.1
 
-# orbs:
-#   slack: circleci/slack@4.10.1
-#   aws-cli: circleci/aws-cli@3.1.1
+orbs:
+  slack: circleci/slack@4.10.1
+  aws-cli: circleci/aws-cli@3.1.1
 
 commands:
   install_awscli:
@@ -292,7 +292,7 @@ jobs:
 
   deploy-frontend:
     docker:
-      - image: cimg/base:stable
+      - image: circleci/node:13.8.0
     steps:
       - checkout
 
@@ -301,8 +301,6 @@ jobs:
             - "3e:86:e8:61:31:41:ea:5e:16:1f:4a:9b:18:21:83:c2"
       - attach_workspace:
           at: ~/
-
-      - install_nodejs
       - install_awscli
       - install_ansible
       - run:
@@ -329,12 +327,10 @@ jobs:
             aws s3 cp dist s3://udapeople-${CIRCLE_WORKFLOW_ID:0:7} --recursive
       - destroy-environment
       - revert-migrations
-
-     
-                    
+         
   deploy-backend:
     docker:
-      - image: cimg/base:stable
+      - image: circleci/node:13.8.0
     steps:
       # Add ssh keys with fingerprint
       # attach workspace
@@ -344,7 +340,6 @@ jobs:
             - "3e:86:e8:61:31:41:ea:5e:16:1f:4a:9b:18:21:83:c2"
       - attach_workspace:
           at: ~/
-      - install_nodejs
       - install_awscli
       - install_ansible
       - run:
@@ -405,7 +400,6 @@ jobs:
       - destroy-environment
       - revert-migrations
 
-
   cloudfront-update:
     docker:
       - image: amazon/aws-cli
@@ -429,7 +423,6 @@ jobs:
       - destroy-environment
       - revert-migrations
  
-
   cleanup:
     docker:
       - image: cimg/base:stable
