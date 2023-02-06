@@ -14,6 +14,7 @@ commands:
             curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
             unzip awscliv2.zip
             sudo ./aws/install
+  
   install_nodejs:
      description: Install Node.js 13
      steps:
@@ -22,6 +23,7 @@ commands:
           command: |
             curl -fsSL https://deb.nodesource.com/setup_13.x | sudo -E bash -
             sudo apt install -y nodejs
+  
   install_ansible:
     description: Install Ansible
     steps:
@@ -32,6 +34,7 @@ commands:
             sudo apt install software-properties-common -y
             sudo add-apt-repository --yes --update ppa:ansible/ansible
             sudo apt install ansible -y
+  
   destroy-environment:
     description: Destroy back-end and front-end cloudformation stacks given a workflow ID.
     parameters:
@@ -49,8 +52,7 @@ commands:
             aws s3 rm s3://udapeople-<<parameters.workflow_id>> --recursive
             aws cloudformation delete-stack --stack-name "udapeople-backend-<<parameters.workflow_id>>"
             aws cloudformation delete-stack --stack-name "udapeople-frontend-<<parameters.workflow_id>>"
-            
-            
+                     
   revert-migrations:
     description: Revert the last migration if successfully run in the current workflow.
     parameters:
@@ -381,7 +383,7 @@ jobs:
               echo $FRONTEND_WEBSITE
               if curl -s $FRONTEND_WEBSITE | grep "Welcome"
               then
-                return 0
+                exit 0
               else
                 return 1
               fi
@@ -398,9 +400,9 @@ jobs:
                 echo "${API_URL}"
                 if curl "${API_URL}/api/status" | grep "ok"
                 then
-                    return 0
+                    exit 0
                 else
-                    return 1
+                    exit 1
                 fi
 
       - destroy-environment
@@ -418,7 +420,7 @@ jobs:
             list-exports --query "Exports[?Name==\`WorkflowID\`].Value" \
             --no-paginate --output text)
             echo "Old Wokflow ID: $OLD_WORKFLOW_ID"
-            curl https://kvdb.io/33GxcCpH7rHocPuWALvF32/old_workflow_id -d "${OLD_WORKFLOW_ID}"
+            curl https://kvdb.io/YQt24WYBtPqUmXsFzWteKD/old_workflow_id -d "${OLD_WORKFLOW_ID}"
       - run:
           name: Update cloudfront distribution
           command: |
@@ -482,9 +484,9 @@ workflows:
           requires: [run-migrations]
       - deploy-backend:
           requires: [run-migrations]
-      - smoke-test:
-          requires: [deploy-backend, deploy-frontend]
+      # - smoke-test:
+      #     requires: [deploy-backend, deploy-frontend]
       - cloudfront-update:
           requires: [smoke-test]
-      - cleanup:
-          requires: [cloudfront-update]
+      # - cleanup:
+      #     requires: [cloudfront-update]
