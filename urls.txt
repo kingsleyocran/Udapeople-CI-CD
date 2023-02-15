@@ -5,7 +5,7 @@ Public URL for your S3 Bucket (aka, your green candidate front-end) [URL02]
     http://udapeople-c177eb1.s3-website-us-east-1.amazonaws.com
 
 Evidence of deployed and functioning Frontend in CloudFront. [URL03]
-    https://dgrwc7i6pc7yr.cloudfront.net/
+    https://d15ub5k0u153g7.cloudfront.net/
 
 Backend Endpoint url [URL04]
     ec2-54-157-135-67.compute-1.amazonaws.com
