@@ -243,17 +243,28 @@ jobs:
   configure-infrastructure:
     docker:
       # Docker image here that supports Ansible
-      - image: cimg/base:stable
+      - image: python:3.7-alpine
+#      - image: python:3.8-alpine3.15      
     steps:
-      - checkout
+      # Checkout code from git
+      - checkout       
+      # Add ssh keys with fingerprint
       - add_ssh_keys:
-          fingerprints:
-            - "3e:86:e8:61:31:41:ea:5e:16:1f:4a:9b:18:21:83:c2"
+          fingerprints: ["3e:86:e8:61:31:41:ea:5e:16:1f:4a:9b:18:21:83:c2"]
+      # attach workspace
       - attach_workspace:
           at: ~/
-    
-      - install_ansible    
-      - install_awscli  
+
+      - run:
+          name: Install dependencies
+          command: |
+              apk add --no-cache --virtual build-dependencies \
+              python3-dev libffi-dev openssl-dev build-base \
+              && pip3 install --upgrade pip \
+              && pip3 install ansible \
+              && pip3 install awscli \
+              && apk del build-dependencies \
+              && rm -rf /var/cache/apk/*   
       
       - run:
           name: Configure server
@@ -275,6 +286,7 @@ jobs:
             echo VERSION=1 >> "backend/.env"      
             echo "CONTENT OF backend/.env"      
             cat backend/.env
+            
             cd .circleci/ansible
             cat inventory.txt
             ansible-playbook -i inventory.txt configure-server.yml
