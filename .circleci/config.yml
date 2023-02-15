@@ -4,17 +4,7 @@ orbs:
   slack: circleci/slack@4.10.1
   aws-cli: circleci/aws-cli@3.1.1
 
-commands:
-  # install_awscli:
-  #   description: Install AWS cli
-  #   steps:
-  #     - run:
-  #         name: Install AWS cli
-  #         command: |
-  #           curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-  #           unzip awscliv2.zip
-  #           sudo ./aws/install
-  
+commands:  
   install_nodejs:
      description: Install Node.js 13
      steps:
@@ -51,7 +41,7 @@ commands:
             aws --region us-east-1 cloudformation delete-stack --stack-name udapeople-backend-<< parameters.Workflow_ID >>
             aws --region us-east-1 cloudformation delete-stack --stack-name udapeople-frontend-<< parameters.Workflow_ID >>
   
-  install_awscli-2:
+  install_awscli:
     description: Install AWS cli
     steps:
       - run:
@@ -60,20 +50,6 @@ commands:
             curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
             unzip awscliv2.zip
             sudo ./aws/install
-
-  install_awscli:
-    description: Install AWS CLI # https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html
-    steps:
-      - run:
-          name: Install tar and zip utilities
-          command: |
-            yum -y install tar gzip unzip zip python-dev
-      - run:
-          name: Install AWS CLI 
-          command: |
-            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-            unzip awscliv2.zip
-            ./aws/install -i /usr/local/aws-cli -b /usr/local/bin
   
   revert-migrations:
     description: Revert the last migration if successfully run in the current workflow.
@@ -86,7 +62,7 @@ commands:
           name: Revert migrations
           when: on_fail
           command: |
-              SUCCESS=$(curl --insecure  https://kvdb.io/${KVDB_BUCKET_ID}/migration_<< parameters.Workflow_ID >>)
+              SUCCESS=$(curl --insecure  https://kvdb.io/5y3dGvHEiia8eRKJmVBoY7/migration_<< parameters.Workflow_ID >>)
               # Logic for reverting the database state
               if (( $SUCCESS == 1 ));
               then
@@ -298,7 +274,6 @@ jobs:
       - image: circleci/node:13.8.0
     steps:
       - checkout
-      - install_awscli
       - run:
           name: Run migrations
           command: |
@@ -312,7 +287,6 @@ jobs:
             then
              curl --insecure https://kvdb.io/5y3dGvHEiia8eRKJmVBoY7/migration_${CIRCLE_WORKFLOW_ID:0:7}  -d '1'
             fi
-      - destroy-environment 
       - revert-migrations
 
   deploy-frontend:
@@ -367,6 +341,7 @@ jobs:
             - "3e:86:e8:61:31:41:ea:5e:16:1f:4a:9b:18:21:83:c2"
       - attach_workspace:
           at: ~/
+
       - install_awscli
       - install_ansible
       - install_nodejs
@@ -515,13 +490,13 @@ workflows:
           requires: [deploy-infrastructure]
       - run-migrations:
           requires: [configure-infrastructure]
-      # - deploy-frontend:
-      #     requires: [run-migrations]
-      # - deploy-backend:
-      #     requires: [run-migrations]
+      - deploy-frontend:
+          requires: [run-migrations]
+      - deploy-backend:
+          requires: [run-migrations]
       # - smoke-test:
       #     requires: [deploy-backend, deploy-frontend]
-      # - cloudfront-update:
-      #     requires: [smoke-test]
-      # - cleanup:
-      #     requires: [cloudfront-update]
+      - cloudfront-update:
+          requires: [smoke-test]
+      - cleanup:
+          requires: [cloudfront-update]
