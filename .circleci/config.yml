@@ -317,6 +317,12 @@ jobs:
             echo "API_URL = ${API_URL}"
             echo API_URL="http://${BACKEND_IP}:3030" >> frontend/.env
             cat frontend/.env
+      
+      - persist_to_workspace:
+          root: ~/
+          paths:
+            - project/frontend/.env
+
       - run:
           name: Deploy frontend objects
           command: |
@@ -361,7 +367,7 @@ jobs:
             
             echo "Contents  of the inventory.txt file is -------"
             cat inventory.txt
-            ansible-playbook -i inventory.txt deploy-backend.yml
+            ansible-playbook -i inventory.txt deploy-backend.yml -v
       - destroy-environment
       - revert-migrations
 
@@ -418,7 +424,7 @@ jobs:
             list-exports --query "Exports[?Name==\`WorkflowID\`].Value" \
             --no-paginate --output text)
             echo "Old Wokflow ID: $OLD_WORKFLOW_ID"
-            curl https://kvdb.io/YQt24WYBtPqUmXsFzWteKD/old_workflow_id -d "${OLD_WORKFLOW_ID}"
+            curl https://kvdb.io/5y3dGvHEiia8eRKJmVBoY7/old_workflow_id -d "${OLD_WORKFLOW_ID}"
       - run:
           name: Update cloudfront distribution
           command: |
@@ -490,10 +496,11 @@ workflows:
           requires: [deploy-infrastructure]
       - run-migrations:
           requires: [configure-infrastructure]
-      - deploy-frontend:
-          requires: [run-migrations]
       - deploy-backend:
           requires: [run-migrations]
+      - deploy-frontend:
+          requires: [deploy-backend]
+
       # - smoke-test:
       #     requires: [deploy-backend, deploy-frontend]
       - cloudfront-update:
