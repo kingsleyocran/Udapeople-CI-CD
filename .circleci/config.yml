@@ -243,7 +243,7 @@ jobs:
   configure-infrastructure:
     docker:
       # Docker image here that supports Ansible
-      - image: python:3.7-alpine
+      - image: python:3.8-alpine3.15
 #      - image: python:3.8-alpine3.15      
     steps:
       # Checkout code from git
@@ -286,7 +286,7 @@ jobs:
             echo VERSION=1 >> "backend/.env"      
             echo "CONTENT OF backend/.env"      
             cat backend/.env
-            
+
             cd .circleci/ansible
             cat inventory.txt
             ansible-playbook -i inventory.txt configure-server.yml
