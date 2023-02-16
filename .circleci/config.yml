@@ -437,10 +437,9 @@ jobs:
  
   cleanup:
     docker:
-      - image: cimg/base:stable
+      - image: amazon/aws-cli
     steps:
       - checkout
-      - install_awscli
       - run:
           name: Get old stack workflow id
           command: |
@@ -455,11 +454,14 @@ jobs:
           command: |
             export OldWorkflowID=$(curl --insecure https://kvdb.io/5y3dGvHEiia8eRKJmVBoY7/old_workflow_id)
             echo Old Workflow ID: $OldWorkflowID 
-            if [[ "${STACKS[@]}" =~ "${OldWorkflowID}" ]]
+            if [[ "${CIRCLE_WORKFLOW_ID:0:7}" =~ "${OldWorkflowID}"]]
             then
               aws s3 rm "s3://udapeople-${OldWorkflowID}" --recursive
               aws cloudformation delete-stack --stack-name "udapeople-backend-${OldWorkflowID}"
               aws cloudformation delete-stack --stack-name "udapeople-frontend-${OldWorkflowID}"
+              echo "=======================Delete Confirmed========================"
+            else
+              echo "=======================Didn't delete========================" 
             fi
         
 workflows:
